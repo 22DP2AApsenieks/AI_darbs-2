@@ -16,7 +16,7 @@ def get_products_from_db():
         if not products:
             return "There are currently no products available in the shop."
         
-        product_list_str = "Here is a list of available products:\n"
+        product_list_str = ""
         for p in products:
             product_list_str += f"- Name: {p.name}, Price: ${p.price:.2f}, Stock: {p.stock}\n"
         
@@ -127,18 +127,21 @@ def purchase_history():
     orders = current_user.orders.order_by(Order.order_date.desc()).all()
     return render_template('purchase_history.html', title='Purchase History', orders=orders)
 
-# ================== Jaunais /chatbot endpoint ==================
+# ================== Jaunais /chatbot endpoint ar produktu sarakstu ==================
 @shop_bp.route('/chatbot', methods=['POST'])
 def chatbot():
     data = request.get_json()  # saņem JSON no frontenda
     user_message = data.get("message", "")
     chat_history = data.get("history", [])
 
+    # Iegūst produktus no datubāzes
+    product_list = get_products_from_db()
+
     # Inicializē čatbota servisu
     chatbot_service = ChatbotService()
 
     # Izsauc servera puses funkciju, kas ģenerē atbildi
-    response = chatbot_service.get_chatbot_response(user_message, chat_history)
+    response = chatbot_service.get_chatbot_response(user_message, chat_history, product_list=product_list)
 
     # Atgriež atbildi JSON formātā
     return jsonify(response)

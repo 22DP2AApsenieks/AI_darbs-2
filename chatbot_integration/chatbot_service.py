@@ -14,25 +14,30 @@ class ChatbotService:
         self.client = OpenAI(api_key=self.api_key)
 
         # ===== 3. SOLIS - Sistēmas instrukcijas =====
-        self.system_instruction = (
+        # Tiek papildināta ar iespēju pievienot produktu sarakstu dinamisku
+        self.system_instruction_template = (
             "Tu esi gudrs un laipns e-veikala asistents. "
             "Atbildi uz jautājumiem tikai par veikala produktiem, cenām, pasūtījumiem un piegādi. "
             "Ja lietotājs jautā par kaut ko ārpus veikala, atbildi: "
             "'Atvainojiet, es varu atbildēt tikai par mūsu veikala produktiem.' "
-            "Atbildes veido īsas un saprotamas, maksimāli 3–4 teikumus."
+            "Atbildes veido īsas un saprotamas, maksimāli 3–4 teikumus.\n\n"
+            "Veikala produkti:\n{product_list}"
         )
 
-    def get_chatbot_response(self, user_message, chat_history=None):
+    def get_chatbot_response(self, user_message, chat_history=None, product_list=""):
         if chat_history is None:
             chat_history = []
 
         # ===== 4. SOLIS - Ziņojumu saraksta izveide =====
         messages = []
-        # 1) Sistēmas instrukcija
-        messages.append({"role": "system", "content": self.system_instruction})
-        # 2) Pievieno iepriekšējo sarunas vēsturi, ja tāda ir
+        # Sistēmas instrukcija ar dinamisko produktu sarakstu
+        system_instruction = self.system_instruction_template.format(product_list=product_list)
+        messages.append({"role": "system", "content": system_instruction})
+
+        # Pievieno iepriekšējo sarunas vēsturi, ja tāda ir
         messages.extend(chat_history)
-        # 3) Pievieno pēdējo lietotāja ziņu
+
+        # Pievieno pēdējo lietotāja ziņu
         messages.append({"role": "user", "content": user_message})
 
         # ===== 5. SOLIS - HF API izsaukums ar OpenAI bibliotēku =====
@@ -50,7 +55,6 @@ class ChatbotService:
         # ===== 6. SOLIS - Atbildes apstrāde =====
         reply_text = ""
         try:
-            # HF/Chat completions atgriež choices sarakstu
             if response.choices and len(response.choices) > 0:
                 reply_text = response.choices[0].message.get("content", "")
             else:
