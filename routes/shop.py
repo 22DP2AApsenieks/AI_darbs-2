@@ -1,8 +1,9 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from models import Product, CartItem, Order, OrderItem
 from database import db
 from flask_login import current_user, login_required
 from forms import AddToCartForm, CheckoutForm
+from chatbot_integration.chatbot_service import ChatbotService  # importē ChatbotService
 
 shop_bp = Blueprint('shop', __name__, template_folder='../templates')
 
@@ -23,6 +24,8 @@ def get_products_from_db():
     except Exception as e:
         print(f"Error fetching products from DB: {e}")
         return "I was unable to access the product catalog."
+
+# ================== Esošie endpointi ==================
 
 @shop_bp.route('/shop')
 def product_list():
@@ -123,3 +126,19 @@ def checkout():
 def purchase_history():
     orders = current_user.orders.order_by(Order.order_date.desc()).all()
     return render_template('purchase_history.html', title='Purchase History', orders=orders)
+
+# ================== Jaunais /chatbot endpoint ==================
+@shop_bp.route('/chatbot', methods=['POST'])
+def chatbot():
+    data = request.get_json()  # saņem JSON no frontenda
+    user_message = data.get("message", "")
+    chat_history = data.get("history", [])
+
+    # Inicializē čatbota servisu
+    chatbot_service = ChatbotService()
+
+    # Izsauc servera puses funkciju, kas ģenerē atbildi
+    response = chatbot_service.get_chatbot_response(user_message, chat_history)
+
+    # Atgriež atbildi JSON formātā
+    return jsonify(response)
